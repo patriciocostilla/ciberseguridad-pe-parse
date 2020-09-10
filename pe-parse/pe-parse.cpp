@@ -92,6 +92,7 @@ void parse_nt_header(IMAGE_NT_HEADERS32* nth, FILE* fp, int offset) {
     size_t readed = fread(nth, 1, sizeof(*nth), fp);
     printf("\tSignature: %x\n", nth->Signature);
     printf("\tFile Header: %x\n", nth->FileHeader);
+    printf("\tOptional Header: %x\n", nth->OptionalHeader);
 }
 
 void parse_file_header(struct FILE_HEADER* fh, FILE* fp, int offset) {
