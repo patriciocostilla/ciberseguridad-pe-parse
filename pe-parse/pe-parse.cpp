@@ -3,34 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct DOS_HEADER {       // DOS .EXE header
-    WORD e_magic;         // Magic number
-    WORD e_cblp;          // Bytes on last page of file
-    WORD e_cp;            // Pages in file
-    WORD e_crlc;          // Relocations
-    WORD e_cparhdr;       // Size of header in paragraphs
-    WORD e_minalloc;      // Minimum extra paragraphs needed
-    WORD e_maxalloc;      // Maximum extra paragraphs needed
-    WORD e_ss;            // Initial (relative) SS value
-    WORD e_sp;            // Initial SP value
-    WORD e_csum;          // Checksum
-    WORD e_ip;            // Initial IP value
-    WORD e_cs;            // Initial (relative) CS value
-    WORD e_lfarlc;        // File address of relocation table
-    WORD e_ovno;          // Overlay number
-    WORD e_res[4];        // Reserved words
-    WORD e_oemid;         // OEM identifier (for e_oeminfo)
-    WORD e_oeminfo;       // OEM information; e_oemid specific
-    WORD e_res2[10];      // Reserved words
-    DWORD e_lfanew;        // File address of new exe header
-};
-typedef struct DOS_HEADER DOS_HEADER;
-
-struct NT_HEADER {
-    DWORD signature;
-};
-typedef struct NT_HEADER NT_HEADER;
-
 struct FILE_HEADER {
     WORD machine;
     WORD number_of_sections;
@@ -42,16 +14,16 @@ struct FILE_HEADER {
 };
 typedef struct FILE_HEADER FILE_HEADER;
 
-void parse_dos_header(struct DOS_HEADER* dh, FILE* fp);
-void parse_nt_header(struct NT_HEADER* nth, FILE* fp, int offset);
+void parse_dos_header(IMAGE_DOS_HEADER* dh, FILE* fp);
+void parse_nt_header(IMAGE_NT_HEADERS32* nth, FILE* fp, int offset);
 void parse_file_header(struct FILE_HEADER* fh, FILE* fp, int offset);
 void newLineRemover(char* array);
 
 int main() {
     // Variable definition
     FILE* fp;
-    DOS_HEADER* dh = (DOS_HEADER *) malloc(sizeof(DOS_HEADER));
-    NT_HEADER* nth = (NT_HEADER *) malloc(sizeof(NT_HEADER));
+    IMAGE_DOS_HEADER* dh = (IMAGE_DOS_HEADER*) malloc(sizeof(IMAGE_DOS_HEADER));
+    IMAGE_NT_HEADERS32* nth = (IMAGE_NT_HEADERS32 *) malloc(sizeof(IMAGE_NT_HEADERS32));
     FILE_HEADER* fh = (FILE_HEADER *) malloc(sizeof(FILE_HEADER));
     char file_name[255];
 
@@ -89,7 +61,7 @@ void newLineRemover(char* array) {
     }
 }
 
-void parse_dos_header(struct DOS_HEADER* dh, FILE* fp) {
+void parse_dos_header(IMAGE_DOS_HEADER* dh, FILE* fp) {
     printf("[DOS-HEADER]\n");
     fseek(fp, 0x00, SEEK_SET);
     size_t readed = fread(dh, 1, sizeof(*dh), fp);
@@ -114,11 +86,12 @@ void parse_dos_header(struct DOS_HEADER* dh, FILE* fp) {
     printf("\te_lfanew: %x\n", dh->e_lfanew);
 }
 
-void parse_nt_header(struct NT_HEADER* nth, FILE* fp, int offset) {
-    printf("[NT-HEADER] at %x\n", offset);
+void parse_nt_header(IMAGE_NT_HEADERS32* nth, FILE* fp, int offset) {
+    printf("[NT-HEADER]\tat %x\t size %d\n", offset, sizeof(*nth));
     fseek(fp, offset, SEEK_SET); // En este punto se corta
     size_t readed = fread(nth, 1, sizeof(*nth), fp);
-    printf("\tSignature: %x\n", nth->signature);
+    printf("\tSignature: %x\n", nth->Signature);
+    printf("\tFile Header: %x\n", nth->FileHeader);
 }
 
 void parse_file_header(struct FILE_HEADER* fh, FILE* fp, int offset) {
