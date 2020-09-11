@@ -84,13 +84,17 @@ void print_optional_header(IMAGE_OPTIONAL_HEADER32* oh) {
     print_word("SizeOfHeapCommit", oh->SizeOfHeapCommit);
     print_word("LoaderFlags", oh->LoaderFlags);
     print_word("NumberOfRvaAndSizes", oh->NumberOfRvaAndSizes);
-    for (int i = 0; i < IMAGE_NUMBEROF_DIRECTORY_ENTRIES; i++) {
-        printf("\t%-25s[%d]\t%9x\n", "DataDirectory", i, oh->DataDirectory[i]);
-    }
     /*
-    * Este es un arreglo de estructuras, hay que imprimirlo recorriendolo
+    * El siguiente es un arreglo de estructuras, hay que imprimirlo recorriendolo
     * IMAGE_DATA_DIRECTORY DataDirectory[IMAGE_NUMBEROF_DIRECTORY_ENTRIES];
     */
+    printf("\t%-25s\n", "DataDirectory");
+    for (int i = 0; i < IMAGE_NUMBEROF_DIRECTORY_ENTRIES; i++) {
+        IMAGE_DATA_DIRECTORY *idd = &oh->DataDirectory[i];
+        printf("\t[%d]\t%-25s\t%9x\n", i, "VirtualAddress", idd->VirtualAddress);
+        printf("\t\t%-25s\t%9x\n", "Size", idd->Size);
+    }
+
 }
 
 void parse_nt_header(IMAGE_NT_HEADERS32* nth, FILE* fp, int offset) {
