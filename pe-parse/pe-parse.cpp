@@ -113,15 +113,15 @@ void parse_nt_header(IMAGE_NT_HEADERS32* nth, FILE* fp, int offset) {
     print_optional_header(&nth->OptionalHeader);
     printf("\n");
 }
-/*
-void parse_section_headers(IMAGE_SECTION_HEADER* sh, FILE* fp, DWORD offset, DWORD section_size, int number_of_sections) {
+
+void parse_section_headers(IMAGE_SECTION_HEADER* sh, FILE* fp, int offset, int section_size, int number_of_sections) {
     print_header("[SECTION-HEADERS]", 0);
     // print section data
     for (int i = 0; i < number_of_sections; i++) {
         fseek(fp, offset, SEEK_SET);
         size_t readed = fread(sh, 1, sizeof(*sh), fp);
-        printf("\t%s", sh->Name);
-        print_word("Virtual Size", sh->Misc.VirtualSize);
+        printf("\t%s\n", sh->Name);
+        print_word("Virtual Size", (int) sh->Misc.VirtualSize);
         print_word("Virtual Address", sh->VirtualAddress);
         print_word("Size Of Raw Data", sh->SizeOfRawData);
         print_word("Pointer To Raw Data", sh->PointerToRawData);
@@ -130,6 +130,7 @@ void parse_section_headers(IMAGE_SECTION_HEADER* sh, FILE* fp, DWORD offset, DWO
         print_word("Number Of Relocations", sh->NumberOfRelocations);
         print_word("Number Of Line Numbers", sh->NumberOfLinenumbers);
         print_word("Characteristics", sh->Characteristics);
+        printf("\n");
         offset = offset + section_size;
         /*
         // save section that contains import directory table
@@ -137,10 +138,10 @@ void parse_section_headers(IMAGE_SECTION_HEADER* sh, FILE* fp, DWORD offset, DWO
             importSection = sectionHeader;
         }
         sectionLocation += sectionSize;
-        
+        */
     }
 }
-*/
+
 
 void newLineRemover(char* array) {
     int i, length;
@@ -157,7 +158,7 @@ int main() {
     FILE* fp;
     IMAGE_DOS_HEADER* dh = (IMAGE_DOS_HEADER*) malloc(sizeof(IMAGE_DOS_HEADER));
     IMAGE_NT_HEADERS32* nth = (IMAGE_NT_HEADERS32 *) malloc(sizeof(IMAGE_NT_HEADERS32));
-    //IMAGE_SECTION_HEADER* sh = (IMAGE_SECTION_HEADER*)malloc(sizeof(IMAGE_SECTION_HEADER));
+    IMAGE_SECTION_HEADER* sh = (IMAGE_SECTION_HEADER*)malloc(sizeof(IMAGE_SECTION_HEADER));
     char file_name[255];
 
     // Get file name
@@ -181,10 +182,10 @@ int main() {
     parse_nt_header(nth, fp, nt_header_offset);
 
     // Parse SECTION-HEADERS
-    // DWORD s_header_offset = (DWORD) nth + sizeof(DWORD) + (DWORD)(sizeof(IMAGE_FILE_HEADER)) + (DWORD) nth->FileHeader.SizeOfOptionalHeader;
-    // DWORD section_size = (DWORD)sizeof(IMAGE_SECTION_HEADER);
-    // int number_of_sections = nth->FileHeader.NumberOfSections;
-    // parse_section_headers(sh, fp, s_header_offset, section_size, number_of_sections);
+    int s_header_offset = (DWORD) nt_header_offset + sizeof(DWORD) + (DWORD)(sizeof(IMAGE_FILE_HEADER)) + (DWORD) nth->FileHeader.SizeOfOptionalHeader;
+    int section_size = (DWORD)sizeof(IMAGE_SECTION_HEADER);
+    int number_of_sections = nth->FileHeader.NumberOfSections;
+    parse_section_headers(sh, fp, s_header_offset, section_size, number_of_sections);
 
 
 
