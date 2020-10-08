@@ -94,6 +94,10 @@ void print_optional_header(IMAGE_OPTIONAL_HEADER32* oh) {
         printf("\t[%d]\t%-25s\t%9x\n", i, "VirtualAddress", idd->VirtualAddress);
         printf("\t\t%-25s\t%9x\n", "Size", idd->Size);
     }
+    /*
+    * Se podría incorporar una escritura explicita de las posiciones 1 y 2
+    * correspondientes a los directorios de Import y Export
+    */
 
 }
 
@@ -109,7 +113,34 @@ void parse_nt_header(IMAGE_NT_HEADERS32* nth, FILE* fp, int offset) {
     print_optional_header(&nth->OptionalHeader);
     printf("\n");
 }
-
+/*
+void parse_section_headers(IMAGE_SECTION_HEADER* sh, FILE* fp, DWORD offset, DWORD section_size, int number_of_sections) {
+    print_header("[SECTION-HEADERS]", 0);
+    // print section data
+    for (int i = 0; i < number_of_sections; i++) {
+        fseek(fp, offset, SEEK_SET);
+        size_t readed = fread(sh, 1, sizeof(*sh), fp);
+        printf("\t%s", sh->Name);
+        print_word("Virtual Size", sh->Misc.VirtualSize);
+        print_word("Virtual Address", sh->VirtualAddress);
+        print_word("Size Of Raw Data", sh->SizeOfRawData);
+        print_word("Pointer To Raw Data", sh->PointerToRawData);
+        print_word("Pointer To Relocations", sh->PointerToRelocations);
+        print_word("Pointer To Line Numbers", sh->PointerToLinenumbers);
+        print_word("Number Of Relocations", sh->NumberOfRelocations);
+        print_word("Number Of Line Numbers", sh->NumberOfLinenumbers);
+        print_word("Characteristics", sh->Characteristics);
+        offset = offset + section_size;
+        /*
+        // save section that contains import directory table
+        if (importDirectoryRVA >= sectionHeader->VirtualAddress && importDirectoryRVA < sectionHeader->VirtualAddress + sectionHeader->Misc.VirtualSize) {
+            importSection = sectionHeader;
+        }
+        sectionLocation += sectionSize;
+        
+    }
+}
+*/
 
 void newLineRemover(char* array) {
     int i, length;
@@ -126,6 +157,7 @@ int main() {
     FILE* fp;
     IMAGE_DOS_HEADER* dh = (IMAGE_DOS_HEADER*) malloc(sizeof(IMAGE_DOS_HEADER));
     IMAGE_NT_HEADERS32* nth = (IMAGE_NT_HEADERS32 *) malloc(sizeof(IMAGE_NT_HEADERS32));
+    //IMAGE_SECTION_HEADER* sh = (IMAGE_SECTION_HEADER*)malloc(sizeof(IMAGE_SECTION_HEADER));
     char file_name[255];
 
     // Get file name
@@ -135,6 +167,10 @@ int main() {
 
     // Open file
     fp = fopen(file_name, "r");
+    if (fp == NULL) {
+        printf("File Open error\nAborting\n");
+        return -1;
+    }
     printf("%s\t%d\n",file_name, (int) fp);
 
     // Parse DOS-HEADER
@@ -143,6 +179,14 @@ int main() {
     // Parse NT-HEADER
     int nt_header_offset = (int) dh->e_lfanew;
     parse_nt_header(nth, fp, nt_header_offset);
+
+    // Parse SECTION-HEADERS
+    // DWORD s_header_offset = (DWORD) nth + sizeof(DWORD) + (DWORD)(sizeof(IMAGE_FILE_HEADER)) + (DWORD) nth->FileHeader.SizeOfOptionalHeader;
+    // DWORD section_size = (DWORD)sizeof(IMAGE_SECTION_HEADER);
+    // int number_of_sections = nth->FileHeader.NumberOfSections;
+    // parse_section_headers(sh, fp, s_header_offset, section_size, number_of_sections);
+
+
 
     // Close the file and exit
     fclose(fp);
