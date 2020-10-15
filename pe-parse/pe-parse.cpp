@@ -1,4 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS
+﻿#define _CRT_SECURE_NO_WARNINGS
 #include <Windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -95,7 +95,7 @@ void print_optional_header(IMAGE_OPTIONAL_HEADER32* oh) {
         printf("\t\t%-25s\t%9x\n", "Size", idd->Size);
     }
     /*
-    * Se podr�a incorporar una escritura explicita de las posiciones 1 y 2
+    * Se podría incorporar una escritura explicita de las posiciones 1 y 2
     * correspondientes a los directorios de Import y Export
     */
 
@@ -114,8 +114,9 @@ void parse_nt_header(IMAGE_NT_HEADERS32* nth, FILE* fp, int offset) {
     printf("\n");
 }
 
-void parse_section_headers(IMAGE_SECTION_HEADER* sh, FILE* fp, int offset, int section_size, int number_of_sections) {
+IMAGE_SECTION_HEADER* parse_section_headers(IMAGE_SECTION_HEADER* sh, FILE* fp, int offset, int section_size, int number_of_sections, int import_directory_rva) {
     print_header("[SECTION-HEADERS]", 0);
+    IMAGE_SECTION_HEADER* import_section = NULL;
     // print section data
     for (int i = 0; i < number_of_sections; i++) {
         fseek(fp, offset, SEEK_SET);
@@ -131,15 +132,14 @@ void parse_section_headers(IMAGE_SECTION_HEADER* sh, FILE* fp, int offset, int s
         print_word("Number Of Line Numbers", sh->NumberOfLinenumbers);
         print_word("Characteristics", sh->Characteristics);
         printf("\n");
-        offset = offset + section_size;
-        /*
         // save section that contains import directory table
-        if (importDirectoryRVA >= sectionHeader->VirtualAddress && importDirectoryRVA < sectionHeader->VirtualAddress + sectionHeader->Misc.VirtualSize) {
-            importSection = sectionHeader;
+        if (import_directory_rva >= sh->VirtualAddress && import_directory_rva < sh->VirtualAddress + sh->Misc.VirtualSize) {
+            import_section = sh;
         }
-        sectionLocation += sectionSize;
-        */
+        offset = offset + section_size;
+        
     }
+    return import_section;
 }
 
 
@@ -180,12 +180,39 @@ int main() {
     // Parse NT-HEADER
     int nt_header_offset = (int) dh->e_lfanew;
     parse_nt_header(nth, fp, nt_header_offset);
+    int import_directory_rva = nth->OptionalHeader.DataDirectory[1].VirtualAddress;
+    printf("Import directory RVA: %x", import_directory_rva);
 
     // Parse SECTION-HEADERS
     int s_header_offset = (DWORD) nt_header_offset + sizeof(DWORD) + (DWORD)(sizeof(IMAGE_FILE_HEADER)) + (DWORD) nth->FileHeader.SizeOfOptionalHeader;
     int section_size = (DWORD)sizeof(IMAGE_SECTION_HEADER);
     int number_of_sections = nth->FileHeader.NumberOfSections;
-    parse_section_headers(sh, fp, s_header_offset, section_size, number_of_sections);
+    IMAGE_SECTION_HEADER* import_section;
+    import_section = parse_section_headers(sh, fp, s_header_offset, section_size, number_of_sections, import_directory_rva);
+    printf("IMPORT SECTION AT: %x", import_section);
+    int import_table_offset = import_section->PointerToRawData;
+    PIMAGE_IMPORT_DESCRIPTOR import_descriptor = (PIMAGE_IMPORT_DESCRIPTOR)(import_table_offset + (import_directory_rva - import_section->VirtualAddress));
+    
+    printf("\n******* DLL IMPORTS *******\n");
+    for (; import_descriptor->Name != 0; import_descriptor++) {
+        // imported dll modules
+        printf("\t%s\n", import_table_offset + (import_descriptor->Name - import_section->VirtualAddress));
+        int thunk = import_descriptor->OriginalFirstThunk == 0 ? import_descriptor->FirstThunk : import_descriptor->OriginalFirstThunk;
+        PIMAGE_THUNK_DATA thunk_data = (PIMAGE_THUNK_DATA)(import_table_offset + (thunk - import_section->VirtualAddress));
+
+        // dll exported functions
+        for (; thunk_data->u1.AddressOfData != 0; thunk_data++) {
+            //a cheap and probably non-reliable way of checking if the function is imported via its ordinal number ¯\_(ツ)_/¯
+            if (thunk_data->u1.AddressOfData > 0x80000000) {
+                //show lower bits of the value to get the ordinal ¯\_(ツ)_/¯
+                printf("\t\tOrdinal: %x\n", (WORD)thunk_data->u1.AddressOfData);
+            }
+            else {
+                printf("\t\t%s\n", (import_table_offset + (thunk_data->u1.AddressOfData - import_section->VirtualAddress + 2)));
+            }
+        }
+    }
+    
 
 
 
